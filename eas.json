@@ -17,13 +17,13 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://api.mylstech.com"
+        "EXPO_PUBLIC_API_BASE_URL": "https://erpapi.rentro.ae"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://api.mylstech.com"
+        "EXPO_PUBLIC_API_BASE_URL": "https://erpapi.rentro.ae"
       }
     }
   },

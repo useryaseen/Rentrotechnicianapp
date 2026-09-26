@@ -18,7 +18,7 @@ import useAuthStore from '@/store/authStore';
 import { colors, spacing, radius, fontSize, shadows, touchTarget, fonts } from '@/theme';
 
 const logo = require('../assets/rentROLogo.png');
-const vectorImage = require('../assets/technicianloginpageimage.avif');
+const vectorImage = require('../assets/technicianloginpageimage.png');
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
