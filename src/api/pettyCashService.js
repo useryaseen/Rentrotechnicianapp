@@ -1,98 +1,92 @@
 /**
- * Petty Cash API endpoints.
+ * Petty Cash API endpoints (spec §6.10, §8.6).
  *
- * Mirrors the web app's usage of petty cash endpoints.
- *
- * Note: The API expects the bill file in a multipart part named "Attachement" (one 't').
- * The other parameters are sent as query string parameters.
+ * Note: the API expects the bill file in a multipart part named "Attachement" (one 't').
+ * The other create parameters are sent on the query string.
  */
 import api from './client';
-import { buildFormData } from '../lib/formDataUtils';
 import { asList } from '../lib/apiHelpers';
 
 /**
  * GET /api/PettyCash/userid?userid={rawUsername}&stDate={stDate}&endDate={endDate}
- * @param {string} rawUsername - The raw login username (from auth)
- * @param {string} stDate - YYYY-MM-DD (start date, optional)
- * @param {string} endDate - YYYY-MM-DD (end date, optional)
  * @returns {Promise<Array>} - list of petty cash entries
  */
 export const getPettyCashList = async (rawUsername, stDate, endDate) => {
   const response = await api.get('/api/PettyCash/userid', {
-    params: {
-      userid: rawUsername,
-      stDate,
-      endDate,
-    },
+    params: { userid: rawUsername, stDate, endDate },
   });
   return asList(response.data);
 };
 
+/** GET /api/PettyCash/{fyCode}/{trcCode}/{vrNo}/{srNo} — full record for edit mode. */
+export const getPettyCashByKeys = async ({ fyCode, trcCode, vrNo, srNo }) => {
+  const path = [fyCode, trcCode, vrNo, srNo].map((v) => encodeURIComponent(String(v))).join('/');
+  const response = await api.get(`/api/PettyCash/${path}`);
+  return Array.isArray(response.data) ? response.data[0] : response.data?.data ?? response.data;
+};
+
+/** GET /api/PettyCash/{uuid} — fallback when the voucher keys are missing. */
+export const getPettyCashByUuid = async (uuid) => {
+  const response = await api.get(`/api/PettyCash/${encodeURIComponent(uuid)}`);
+  return Array.isArray(response.data) ? response.data[0] : response.data?.data ?? response.data;
+};
+
 /**
- * POST /api/PettyCash
- * @param {Object} params - Query string parameters (VrDate, MainAccount, Username, AccCode, etc.)
- * @param {File} billFile - The bill file (image or PDF) to upload as "Attachement"
- * @returns {Promise<Object>} - { isValid: boolean, successMessage?: string, errorMessage?: string }
+ * POST /api/PettyCash?<scalars> with the bill as multipart "Attachement".
+ * @param {Object} params - VrDate, MainAccount, Username, AccCode, BillNo, BillDate, AccAmt, …
+ * @param {{ uri: string, name: string, type: string }} billFile
+ * @returns {Promise<{ isValid?: boolean, successMessage?: string, errorMessage?: string }>}
  */
 export const createPettyCashEntry = async (params, billFile) => {
-  // Build the FormData with the bill file
   const formData = new FormData();
-  formData.append('Attachement', billFile, billFile.name); // Note: one 't' in Attachement
-  // Note: The web app does not put any other fields in the FormData; they are in the query string.
-  // So we only append the file.
-
+  formData.append('Attachement', { uri: billFile.uri, name: billFile.name, type: billFile.type });
   const response = await api.post('/api/PettyCash', formData, {
-    params, // axios will put these in the query string
+    params,
     headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120000,
   });
   return response.data;
 };
 
 /**
- * GET /api/PettyCash/download/{attachmentName}
- * @param {string} attachmentName - The filename of the attachment (as stored in the entry)
- * @returns {Promise<Object>} - Axios response with data as blob (we'll return the whole response)
- * Note: The caller must handle the blob (e.g., create a download link).
+ * PUT /api/PettyCash/{fyCode}/{trcCode}/{vrNo}/{srNo} with the full model (spec §6.10 edit mode).
  */
-export const downloadPettyCashAttachment = async (attachmentName) => {
-  const response = await api.get(`/api/PettyCash/download/${attachmentName}`, {
-    responseType: 'blob', // Important: we want the binary data
+export const updatePettyCashEntry = async ({ fyCode, trcCode, vrNo, srNo }, model) => {
+  const path = [fyCode, trcCode, vrNo, srNo].map((v) => encodeURIComponent(String(v))).join('/');
+  const response = await api.put(`/api/PettyCash/${path}`, model, {
+    headers: { 'Content-Type': 'application/json' },
   });
-  return response;
+  return response.data;
 };
 
 /**
- * GET /api/PettyCash/mainaccount
- * @returns {Promise<Array>} - list of main accounts
+ * URL of GET /api/PettyCash/download/{attachmentName}. The endpoint needs the bearer
+ * token, so pass it as a header (e.g. `<Image source={{ uri, headers }} />`).
  */
+export const getPettyCashAttachmentUrl = (attachmentName) =>
+  `${String(api.defaults.baseURL ?? '').replace(/\/$/, '')}/api/PettyCash/download/${encodeURIComponent(
+    attachmentName
+  )}`;
+
+/** GET /api/PettyCash/mainaccount */
 export const getMainAccountList = async () => {
   const response = await api.get('/api/PettyCash/mainaccount');
   return asList(response.data);
 };
 
-/**
- * GET /api/PettyCash/expenseaccounts
- * @returns {Promise<Array>} - list of expense accounts
- */
+/** GET /api/PettyCash/expenseaccounts */
 export const getExpenseAccountList = async () => {
   const response = await api.get('/api/PettyCash/expenseaccounts');
   return asList(response.data);
 };
 
-/**
- * GET /api/PettyCash/categories
- * @returns {Promise<Object>} - e.g., { "001": "Fuel / Petrol", ... }
- */
+/** GET /api/PettyCash/categories — e.g. `{ "001": "Fuel / Petrol", … }` */
 export const getCategoryList = async () => {
   const response = await api.get('/api/PettyCash/categories');
   return response.data;
 };
 
-/**
- * POST /api/PettyCash/getsuppliers?query={query}
- * @param {string} query - Search string
- * @returns {Promise<Array>} - list of suppliers
- */
+/** POST /api/PettyCash/getsuppliers?query={query} */
 export const getSuppliers = async (query) => {
   const response = await api.post('/api/PettyCash/getsuppliers', null, {
     params: { query },
@@ -102,8 +96,11 @@ export const getSuppliers = async (query) => {
 
 export default {
   getPettyCashList,
+  getPettyCashByKeys,
+  getPettyCashByUuid,
   createPettyCashEntry,
-  downloadPettyCashAttachment,
+  updatePettyCashEntry,
+  getPettyCashAttachmentUrl,
   getMainAccountList,
   getExpenseAccountList,
   getCategoryList,

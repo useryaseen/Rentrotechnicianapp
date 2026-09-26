@@ -161,10 +161,8 @@ export function getStatusMeta(code, statusList, fallbackTable = SERVICE_STATUS_F
 
 /** Status label for a support ticket, whose table is an object map. */
 export function getTicketStatusMeta(code, ticketStatusList) {
-  const table =
-    ticketStatusList && Object.keys(ticketStatusList).length
-      ? ticketStatusList
-      : SUPPORT_TICKET_STATUSES;
+  // New tickets arrive as `000`, which the backend lookup does not list.
+  const table = { '000': 'Pending', ...SUPPORT_TICKET_STATUSES, ...(ticketStatusList ?? {}) };
   const rows = Object.entries(table).map(([key, value]) => ({
     code: pad3(key),
     description: String(value),

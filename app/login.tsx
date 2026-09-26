@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import useAuthStore from '@/store/authStore';
-import { colors, spacing, radius, fontSize, shadows, touchTarget } from '@/theme';
+import { colors, spacing, radius, fontSize, shadows, touchTarget, fonts } from '@/theme';
 
 const logo = require('../assets/rentROLogo.png');
 const vectorImage = require('../assets/technicianloginpageimage.avif');
@@ -250,12 +250,14 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   heroTitle: {
+    fontFamily: fonts.semibold,
     fontSize: fontSize.xxl,
-    fontWeight: '800',
+    letterSpacing: -0.4,
     color: colors.surface,
     marginTop: 35,
   },
   heroSubtitle: {
+    fontFamily: fonts.regular,
     fontSize: fontSize.body,
     color: colors.primarySoft,
     marginTop: spacing.xs,
@@ -293,8 +295,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   badgeText: {
+    fontFamily: fonts.medium,
     fontSize: fontSize.sm,
-    fontWeight: '700',
     color: colors.primary,
   },
   errorBox: {
@@ -307,14 +309,14 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   errorText: {
+    fontFamily: fonts.medium,
     flex: 1,
     fontSize: fontSize.sm,
     color: colors.danger,
-    fontWeight: '600',
   },
   label: {
+    fontFamily: fonts.medium,
     fontSize: fontSize.sm,
-    fontWeight: '700',
     color: colors.text,
     marginBottom: spacing.sm,
   },
@@ -335,6 +337,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   input: {
+    fontFamily: fonts.regular,
     flex: 1,
     fontSize: fontSize.body,
     color: colors.ink,
@@ -363,8 +366,8 @@ const styles = StyleSheet.create({
     elevation: 0,
   },
   buttonText: {
+    fontFamily: fonts.medium,
     fontSize: fontSize.lg,
-    fontWeight: '700',
     color: colors.surface,
   },
   footer: {
@@ -376,6 +379,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xxl,
   },
   footerText: {
+    fontFamily: fonts.regular,
     fontSize: fontSize.xs,
     color: colors.faint,
   },

@@ -79,18 +79,30 @@ export const fontSize = {
   body: 16,
   lg: 18,
   xl: 22,
-  xxl: 28,
+  xxl: 26,
+};
+
+/**
+ * Plus Jakarta Sans, loaded in `app/_layout.tsx`.
+ * With custom fonts each weight is its own family — use these instead of `fontWeight`
+ * (Android ignores `fontWeight` on custom families).
+ */
+export const fonts = {
+  regular: 'PlusJakartaSans_400Regular',
+  medium: 'PlusJakartaSans_500Medium',
+  semibold: 'PlusJakartaSans_600SemiBold',
+  bold: 'PlusJakartaSans_700Bold',
 };
 
 export const touchTarget = 44;
 
 export const shadows = {
   card: {
-    shadowColor: '#0f172a',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    shadowColor: '#1e293b',
+    shadowOpacity: 0.07,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
   },
   sheet: {
     shadowColor: '#0f172a',
@@ -101,4 +113,4 @@ export const shadows = {
   },
 };
 
-export default { colors, spacing, radius, fontSize, shadows, touchTarget };
+export default { colors, spacing, radius, fontSize, fonts, shadows, touchTarget };

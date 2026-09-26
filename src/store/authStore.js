@@ -28,6 +28,7 @@ const useAuthStore = create((set, get) => ({
   isTechnician: false,
   displayName: null,
   userId: null,
+  username: null,
 
   login: async (username, password) => {
     try {
@@ -46,7 +47,7 @@ const useAuthStore = create((set, get) => ({
         getDisplayName(),
         getUserId(),
       ]);
-      set({ displayName, userId });
+      set({ displayName, userId, username });
     } catch (error) {
       throw error;
     }
@@ -60,6 +61,7 @@ const useAuthStore = create((set, get) => ({
       isTechnician: false,
       displayName: null,
       userId: null,
+      username: null,
     });
   },
 

@@ -161,7 +161,22 @@ export const getInstallationAssets = async (assetGroup) => {
   return asList(response.data);
 };
 
+/**
+ * GET /api/customers/getserivehistory/{techId}?fromDate&toDate (API spelling: "serive")
+ * @param {string} techId
+ * @param {string} fromDate - YYYY-MM-DD
+ * @param {string} toDate - YYYY-MM-DD
+ * @returns {Promise<Array>} - completed service history rows
+ */
+export const getServiceHistory = async (techId, fromDate, toDate) => {
+  const response = await api.get(`/api/customers/getserivehistory/${encodeURIComponent(techId)}`, {
+    params: { fromDate, toDate },
+  });
+  return asList(response.data);
+};
+
 export default {
+  getServiceHistory,
   getServiceStatusList,
   getSupportTicketStatusList,
   getServiceList,
