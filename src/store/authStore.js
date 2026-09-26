@@ -35,7 +35,12 @@ const useAuthStore = create((set, get) => ({
       set({ token });
       // Fetch and save the profile (from hard-coded table for now)
       const profile = await getProfile();
-      set({ profile, isTechnician: !!profile });
+      if (!profile) {
+        await clearSession();
+        set({ token: null });
+        throw new Error('This account is not registered as a technician.');
+      }
+      set({ profile, isTechnician: true });
       // Also cache displayName and userId from JWT
       const [displayName, userId] = await Promise.all([
         getDisplayName(),

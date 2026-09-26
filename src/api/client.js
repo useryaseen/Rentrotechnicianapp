@@ -11,7 +11,7 @@
 import axios from 'axios';
 import { getToken } from '../lib/tokenStorage';
 
-const DEFAULT_API_BASE_URL = 'https://api.mylstech.com';
+const DEFAULT_API_BASE_URL = 'https://erpapi.rentro.ae';
 
 if (!process.env.EXPO_PUBLIC_API_BASE_URL) {
   console.warn(`EXPO_PUBLIC_API_BASE_URL is not set. Falling back to ${DEFAULT_API_BASE_URL}`);

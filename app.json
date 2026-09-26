@@ -21,7 +21,7 @@
     "android": {
       "package": "ae.rentro.technician",
       "permissions": [
-        "CAMERA"
+        "android.permission.CAMERA"
       ],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -35,7 +35,6 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store",
       [
         "expo-image-picker",
         {
@@ -46,6 +45,12 @@
       ],
       "@react-native-community/datetimepicker",
       "expo-status-bar"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "b637066a-d923-494d-8f3f-e934b593da7c"
+      }
+    }
   }
 }

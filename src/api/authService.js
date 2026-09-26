@@ -3,7 +3,7 @@
  *
  * Handles login, token storage, and profile retrieval.
  *
- * Token is stored in expo-secure-store (key: '@rentro_tech_token').
+ * Token is stored in expo-secure-store (key: 'rentro_tech_token').
  * Profile is stored in AsyncStorage (key: '@rentro_tech_profile').
  *
  * The web app stores token in localStorage and profile in localStorage (technicianProfiles.js is hard-coded).

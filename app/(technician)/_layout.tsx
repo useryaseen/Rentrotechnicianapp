@@ -17,11 +17,13 @@ const NotificationToast = () => {
 };
 
 export default function TechnicianLayout() {
-  const { displayName, techId, logout } = useAuthStore();
+  const { profile, displayName: jwtDisplayName, logout } = useAuthStore();
   const router = useRouter();
+  const techId = profile?.techId;
+  const displayName = profile?.displayName ?? jwtDisplayName;
 
   // Redirect to login if the profile is missing
-  if (!displayName || !techId) {
+  if (!techId) {
     return <Redirect href="/login" />;
   }
 
