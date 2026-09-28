@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,12 +10,14 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import useAuthStore from '@/store/authStore';
 import { colors, spacing, radius, fontSize, shadows, touchTarget, fonts } from '@/theme';
+import NetInfo from '@react-native-community/netinfo';
 
 const logo = require('../assets/rentROLogo.png');
 const vectorImage = require('../assets/technicianloginpageimage.png');
@@ -27,11 +29,21 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [focused, setFocused] = useState<'username' | 'password' | null>(null);
+  const [isConnected, setIsConnected] = useState(true);
   const passwordRef = useRef<TextInput>(null);
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(state => {
+      setIsConnected(state.isConnected ?? true);
+    });
+    return () => unsubscribe();
+  }, []);
+
+   const { width, height } = useWindowDimensions();
+   const imageHeight = height * 0.102; // 10.2% of screen height
   const { login } = useAuthStore();
   const router = useRouter();
 
-  const canSubmit = username.trim().length > 0 && password.length > 0 && !loading;
+  const canSubmit = username.trim().length > 0 && password.length > 0 && !loading && isConnected;
 
   const handleLogin = async () => {
     if (!canSubmit) return;
@@ -78,12 +90,17 @@ export default function LoginPage() {
             </View>
 
             <View style={styles.card}>
-              <Image source={vectorImage} style={styles.logo} resizeMode="contain" />
+               <Image source={vectorImage} style={[styles.logo, { height: imageHeight }]} resizeMode="contain" />
 
               <View style={styles.badge}>
                 <MaterialCommunityIcons name="account-hard-hat" size={16} color={colors.primary} />
                 <Text style={styles.badgeText}>Technician Portal</Text>
               </View>
+{ !isConnected && (
+  <View style={styles.offlineBanner}>
+    <Text style={styles.offlineText}>No internet connection. Please check your network.</Text>
+  </View>
+)}
 
               {error && (
                 <View style={styles.errorBox}>
@@ -269,12 +286,13 @@ const styles = StyleSheet.create({
     ...shadows.sheet,
     shadowOffset: { width: 0, height: 8 },
   },
-  logo: {
-    width: '120%',
-    aspectRatio: 1092 / 266,
-    alignSelf: 'center',
-    marginBottom: spacing.lg,
-  },
+logo: {
+    //  aspectRatio: 1092 / 266,
+    height: 30,
+    
+     alignSelf: 'center',
+     marginBottom: spacing.lg,
+   },
   rentroLogo: {
     width: 200,
     height: 30,
@@ -383,4 +401,17 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     color: colors.faint,
   },
+offlineBanner: {
+    backgroundColor: colors.dangerSoft,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    alignItems: 'center',
+  },
+  offlineText: {
+    fontFamily: fonts.regular,
+    fontSize: fontSize.sm,
+    color: colors.danger,
+  },
 });
+
+

@@ -361,13 +361,12 @@ export function buildAddress(row) {
 }
 
 /**
- * Effective next-service date: the explicit field when present, otherwise
- * `lastServiceDate + pmMode` days (drives the §6.3 date filter).
+ * Effective next-service date: calculated from `lastServiceDate + pmMode` days
+ * (drives the §6.3 date filter). Falls back to explicit field when lastServiceDate
+ * or pmMode is unavailable.
  */
 export function effectiveNextServiceDate(row) {
   if (!row) return null;
-  const explicit = parseApiDate(pickField(row, ['nextServiceDate', 'NextServiceDate']));
-  if (explicit) return explicit;
   const last = parseApiDate(
     pickField(row, ['lastServiceDate', 'LastServiceDate', 'serviceDate', 'service_Date', 'vrDate'])
   );
@@ -377,6 +376,8 @@ export function effectiveNextServiceDate(row) {
     next.setDate(next.getDate() + pmMode);
     return next;
   }
+  const explicit = parseApiDate(pickField(row, ['nextServiceDate', 'NextServiceDate']));
+  if (explicit) return explicit;
   return null;
 }
 

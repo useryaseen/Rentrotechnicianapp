@@ -12,10 +12,11 @@ import { Feather } from '@expo/vector-icons';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import GradientButton from '@/components/GradientButton';
 import { colors, fontSize, radius, shadows, spacing, fonts } from '@/theme';
-import { formatDate, formatDateTime, initialsOf } from '@/lib/format';
+import { formatDate, formatDateTime, initialsOf, parseApiDate } from '@/lib/format';
 import { hasText, pad3 } from '@/lib/apiHelpers';
 import {
   buildAddress,
+  effectiveNextServiceDate,
   getComplaintPriorityLabel,
   getComplaintTypeLabel,
   getInstallationPhase,
@@ -187,13 +188,28 @@ export default function TaskCard({
         ? hasText(task.serviceNo) ? `Service #${task.serviceNo}` : ''
         : hasText(task.vrNo) && task.vrNo ? `VR #${task.vrNo}` : '';
 
+  // Compute next service date based on serviceDate + pmMode for services, fallback to effectiveNextServiceDate
+   let nextService = null;
+   if (kind === 'services') {
+     const base = parseApiDate(task.serviceDate || task.lastServiceDate);
+     const pmMode = Number(task.pmMode) || 0;
+     if (base && pmMode > 0) {
+       const next = new Date(base);
+       next.setDate(next.getDate() + pmMode);
+       nextService = next;
+     }
+   }
+   if (!nextService) {
+     nextService = effectiveNextServiceDate(task);
+   }
+   const calculatedNextService = nextService;
   const dateRow =
     kind === 'services'
-      ? { label: 'Next service', value: formatDate(task.nextServiceDate) || formatDate(due?.date) }
+      ? { label: 'Next service', value: formatDate(calculatedNextService) || formatDate(due?.date) }
       : kind === 'tickets'
         ? { label: 'Reported', value: formatDateTime(task.complaintDt || task.vrDate) }
         : { label: 'Installation date', value: formatDate(task.installationDate) };
-  const lastService = kind === 'services' ? formatDate(task.lastServiceDate) : '';
+  const lastService = kind === 'services' ? formatDate(task.serviceDate || task.lastServiceDate) : '';
 
   const isStart = action === 'start';
   const actionLabel = isStart

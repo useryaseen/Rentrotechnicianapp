@@ -48,6 +48,15 @@ export default function StartTaskModal({
     setImages([]);
   }
 
+  // The API rejects a start without the before-service photo, so a photo is required
+  // before "Start Now" becomes available.
+  const missingPhoto = images.length === 0;
+
+  const confirm = () => {
+    if (missingPhoto) return;
+    onConfirm(images);
+  };
+
   const asset = [task?.assetCode, task?.assetName].filter(hasText).join(' · ');
 
   return (
@@ -83,11 +92,15 @@ export default function StartTaskModal({
 
             <View style={styles.section}>
               <View style={styles.sectionHead}>
-                <Text style={styles.sectionTitle}>Before-service photos</Text>
+                <Text style={styles.sectionTitle}>
+                  Before-service photos <Text style={styles.required}>*</Text>
+                </Text>
                 <Text style={styles.count}>{images.length} added</Text>
               </View>
-              <Text style={styles.hint}>
-                Capture the asset before you begin. Photos are compressed before upload.
+              <Text style={[styles.hint, missingPhoto && styles.hintRequired]}>
+                {missingPhoto
+                  ? 'At least one photo is required — capture the asset before you start.'
+                  : 'Capture the asset before you begin. Photos are compressed before upload.'}
               </Text>
               <PhotoPicker images={images} onChange={setImages} prefix="before" disabled={loading} />
             </View>
@@ -107,7 +120,8 @@ export default function StartTaskModal({
               variant="start"
               loading={loading}
               loadingLabel="Starting…"
-              onPress={() => onConfirm(images)}
+              disabled={missingPhoto}
+              onPress={confirm}
               style={styles.flex}
             />
           </View>
@@ -204,6 +218,11 @@ const styles = StyleSheet.create({
     fontSize: fontSize.body,
     color: colors.ink,
   },
+  required: {
+    fontFamily: fonts.semibold,
+    fontSize: fontSize.body,
+    color: colors.danger,
+  },
   count: {
     fontFamily: fonts.medium,
     fontSize: fontSize.xs,
@@ -214,6 +233,9 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     color: colors.muted,
     marginBottom: spacing.xs,
+  },
+  hintRequired: {
+    color: colors.danger,
   },
   footer: {
     flexDirection: 'row',

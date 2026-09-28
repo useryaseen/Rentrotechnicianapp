@@ -22,6 +22,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Feather } from '@expo/vector-icons';
 import { colors, fontSize, radius, shadows, spacing, fonts } from '@/theme';
 import GradientButton from '@/components/GradientButton';
+import ConfirmModal from '@/components/ConfirmModal';
+import SuccessModal from '@/components/SuccessModal';
 import PhotoPicker, { type LocalImage } from '@/components/PhotoPicker';
 import SignatureField, { type SignatureValue } from '@/components/SignatureField';
 import ItemPickerModal, { type Item } from '@/components/ItemPickerModal';
@@ -52,6 +54,9 @@ type CheckRow = { id: number; title: string; jobCode: string; notes: string; sta
 
 /** The status sent with every End Task call — the backend decides the resulting state. */
 const END_TASK_STATUS_CODE = '00';
+
+/** How long the success sheet stays up before we land back on My Tasks. */
+const SUCCESS_REDIRECT_MS = 2200;
 
 let rowId = 0;
 const nextId = () => ++rowId;
@@ -240,6 +245,12 @@ export default function EndTask() {
   const [customerSignature, setCustomerSignature] = useState<SignatureValue | null>(null);
   const [pickerFor, setPickerFor] = useState<number | null>(null);
   const [activeEndUuid, setActiveEndUuid] = useState<string | null>(null);
+  /** "Do you want to end this task?" confirmation sheet. */
+  const [confirming, setConfirming] = useState(false);
+  /** Validation/submit problems — inline, because `Alert` renders nothing on web. */
+  const [formError, setFormError] = useState<string | null>(null);
+  /** Set once the API accepted the close; the success sheet then returns us to My Tasks. */
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Prefill once the task is known (spec §6.5).
   const [prefilledFor, setPrefilledFor] = useState<string | null>(null);
@@ -268,14 +279,34 @@ export default function EndTask() {
     setCheckRows((rows) => rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
 
   /* ---------------- submit ---------------- */
+
+  /** Validate what the API requires, then ask the technician to confirm. */
   const submit = () => {
     if (!task) return;
-    if (!customerSignature) {
-      Alert.alert('Missing Signature', 'Please provide the attendee signature before ending the task.');
+
+    const missing = !customerSignature
+      ? 'Please provide the attendee signature before ending the task.'
+      : !techSignature
+        ? 'Please provide the technician signature before ending the task.'
+        : null;
+    if (missing) {
+      // Also shown inline: `Alert.alert` renders nothing on web.
+      setFormError(missing);
+      Alert.alert('Missing Signature', missing);
       return;
     }
-    if (!techSignature) {
-      Alert.alert('Missing Signature', 'Please provide the technician signature before ending the task.');
+
+    setFormError(null);
+    setConfirming(true);
+  };
+
+  /** Runs once the confirmation sheet is accepted. */
+  const endTaskNow = () => {
+    if (!task) return;
+    // `submit` already validated, but this keeps the types (and the request) honest.
+    if (!customerSignature || !techSignature) {
+      setConfirming(false);
+      setFormError('Both signatures are required before ending the task.');
       return;
     }
 
@@ -329,16 +360,20 @@ export default function EndTask() {
       },
       {
         onSuccess: (res: Row) => {
-          Alert.alert(
-            'Task Ended Successfully',
-            res?.message || `The task for ${task.accName || 'the customer'} has been submitted successfully.`,
-            [{ text: 'Done', onPress: () => router.replace('/tasks') }],
-            { cancelable: false }
+          queryClient.invalidateQueries({ queryKey: ['technician'] });
+          setConfirming(false);
+          setFormError(null);
+          setSuccessMessage(
+            res?.message ||
+              `The task for ${task.accName || 'the customer'} has been submitted successfully.`
           );
         },
         onError: (error) => {
+          setConfirming(false);
           const title = error instanceof TaskActionError ? error.title : 'Failed to End Task';
-          Alert.alert(title, error.message || 'Unknown error');
+          const message = error.message || 'Unknown error';
+          setFormError(`${title} — ${message}`);
+          Alert.alert(title, message);
         },
       }
     );
@@ -533,6 +568,13 @@ export default function EndTask() {
           </Pressable>
         </Section>
 
+        {formError ? (
+          <View style={[styles.notice, styles.noticeError]}>
+            <Feather name="alert-triangle" size={18} color={colors.danger} />
+            <Text style={[styles.noticeText, styles.noticeTextError]}>{formError}</Text>
+          </View>
+        ) : null}
+
         {/* Footer */}
         <View style={styles.footer}>
           <Pressable
@@ -564,6 +606,41 @@ export default function EndTask() {
           if (pickerFor !== null) updateBom(pickerFor, { code: item.code, name: item.name });
           setPickerFor(null);
         }}
+      />
+
+      {/* "Do you want to end task?" — a sheet, because Alert.alert does nothing on web. */}
+      <ConfirmModal
+        visible={confirming}
+        title={isTicket ? 'Close this ticket?' : 'End this task?'}
+        message={
+          isTicket
+            ? `Do you want to close this ticket for ${task.accName || 'the customer'}?`
+            : `Do you want to end this task for ${task.accName || 'the customer'}?`
+        }
+        detail={
+          isTicket
+            ? 'The ticket will be marked closed and its details can no longer be edited.'
+            : 'The visit will be marked completed and its details can no longer be edited.'
+        }
+        icon={isTicket ? 'check-circle' : 'alert-octagon'}
+        confirmLabel={isTicket ? 'Yes, Close Ticket' : 'Yes, End Task'}
+        cancelLabel="Cancel"
+        destructive
+        loading={submitting}
+        loadingLabel="Submitting…"
+        onCancel={() => setConfirming(false)}
+        onConfirm={endTaskNow}
+      />
+
+      {/* Success sheet → "Task Ended Successfully", then auto-returns to My Tasks. */}
+      <SuccessModal
+        visible={!!successMessage}
+        title={isTicket ? 'Ticket Closed Successfully' : 'Task Ended Successfully'}
+        message={successMessage ?? ''}
+        detail="Returning you to My Tasks…"
+        actionLabel="Go to My Tasks"
+        autoCloseMs={SUCCESS_REDIRECT_MS}
+        onAction={() => router.replace('/tasks')}
       />
     </KeyboardAvoidingView>
   );
@@ -829,6 +906,26 @@ const styles = StyleSheet.create({
     fontFamily: fonts.semibold,
     fontSize: fontSize.sm + 1,
     color: colors.primary,
+  },
+  notice: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    padding: spacing.md,
+  },
+  noticeError: {
+    backgroundColor: colors.dangerSoft,
+    borderColor: colors.danger,
+  },
+  noticeText: {
+    fontFamily: fonts.medium,
+    flex: 1,
+    fontSize: fontSize.sm,
+  },
+  noticeTextError: {
+    color: colors.danger,
   },
   footer: {
     flexDirection: 'row',

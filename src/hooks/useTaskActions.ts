@@ -13,11 +13,11 @@ import {
   setPinnedTasks,
 } from '@/lib/taskStorage';
 import { useTechnicianIdentity, type Row } from './useTechnicianQueries';
+import { toUploadPart, toUploadParts } from '@/lib/uploadUtils';
 import type { LocalImage } from '@/components/PhotoPicker';
 
+/** A local photo/signature waiting to be uploaded as a multipart file part. */
 type FilePart = { uri: string; name: string; type: string };
-
-const toFormPart = (file: FilePart) => ({ uri: file.uri, name: file.name, type: file.type }) as any;
 
 export class TaskActionError extends Error {
   title: string;
@@ -49,8 +49,19 @@ export function useStartTask() {
   return useMutation({
     mutationFn: async ({ task, images }: { task: Row; images: LocalImage[] }) => {
       const scheduleUuid = getScheduleUuid(task);
+      // The API expects at least one before-service photo, so fail fast with a clear copy
+      // instead of letting the request come back as a generic 400 (spec §6.3).
+      if (!images?.length) {
+        throw new TaskActionError(
+          'Photo Required',
+          'Add at least one before-service photo of the asset before starting the task.'
+        );
+      }
       const fd = new FormData();
-      images.forEach((img) => fd.append('AssetImagesBeforeTaskStart', toFormPart(img)));
+      // Photos are compressed before upload; the part value is platform-aware (see uploadUtils).
+      (await toUploadParts(images)).forEach((part) =>
+        fd.append('AssetImagesBeforeTaskStart', part as any)
+      );
       try {
         const res: Row = (await startTask(scheduleUuid, fd)) ?? {};
         const endTaskUuid = String(res.uuid || res.taskUuid || '');
@@ -142,11 +153,13 @@ export function useEndTask() {
       fd.append('Sw_bf', payload.swBf);
       fd.append('Sw_af', payload.swAf);
       fd.append('Water_source', payload.waterSource);
-      payload.afterImages.forEach((img) => fd.append('AfterServiceImage', toFormPart(img)));
+      (await toUploadParts(payload.afterImages)).forEach((img) =>
+        fd.append('AfterServiceImage', img as any)
+      );
       if (payload.bomItems.length) fd.append('BomItemslist', JSON.stringify(payload.bomItems));
       if (payload.tasks.length) fd.append('Taskslist', JSON.stringify(payload.tasks));
-      fd.append('AttendeeSignature', toFormPart(payload.attendeeSignature));
-      fd.append('TechieSignature', toFormPart(payload.techieSignature));
+      fd.append('AttendeeSignature', (await toUploadPart(payload.attendeeSignature)) as any);
+      fd.append('TechieSignature', (await toUploadPart(payload.techieSignature)) as any);
 
       try {
         return ((await endTask(taskUuid, fd)) ?? {}) as Row;

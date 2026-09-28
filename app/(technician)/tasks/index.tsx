@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, FlatList, Platform, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Platform, Pressable, RefreshControl, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { colors, fontSize, radius, spacing, fonts } from '@/theme';
 import { EmptyState, ErrorBanner, LoadingView, SearchBar, Segmented } from '@/components/ui';
+import { Feather } from '@expo/vector-icons';
 import TaskCard, { getTaskAction, type TaskAction, type TaskKind } from '@/components/TaskCard';
 import {
   useMyTasks,
@@ -22,10 +23,14 @@ import {
 } from '@/lib/serviceUtils';
 import { getPinnedTasks, togglePinnedTask } from '@/lib/taskStorage';
 import StartTaskModal from '@/components/StartTaskModal';
+import SuccessModal from '@/components/SuccessModal';
 import type { LocalImage } from '@/components/PhotoPicker';
 import { TaskActionError, useStartTask } from '@/hooks/useTaskActions';
 
 type DateFilter = 'all' | 'today' | 'week' | 'started';
+
+/** How long the start-success sheet stays up before it dismisses itself. */
+const SUCCESS_AUTO_CLOSE_MS = 2000;
 
 const DATE_FILTERS: { value: DateFilter; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -84,9 +89,19 @@ export default function TasksIndex() {
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [startTarget, setStartTarget] = useState<{ row: Row; kind: TaskKind; key: string } | null>(null);
   const startMutation = useStartTask();
+  /** Success sheet shown after a task/installation starts (Alert is a no-op on web). */
+  const [success, setSuccess] = useState<{ title: string; message: string } | null>(null);
 
   const confirmStart = (images: LocalImage[]) => {
     if (!startTarget) return;
+    // Belt and braces: the sheet already blocks this, but never start without a photo.
+    if (!images.length) {
+      Alert.alert(
+        'Photo Required',
+        'Add at least one before-service photo of the asset before starting this task.'
+      );
+      return;
+    }
     const { row, key } = startTarget;
     startMutation.mutate(
       { task: row, images },
@@ -97,7 +112,10 @@ export default function TasksIndex() {
           setPinned((prev) => (key && !prev.includes(key) ? [...prev, key] : prev));
           setSearch('');
           setDateFilter('all');
-          Alert.alert('Task Started', `${row.accName || 'The task'} is now in progress. Tap End when the work is done.`);
+          setSuccess({
+            title: 'Task Started',
+            message: `${row.accName || 'The task'} is now in progress. Tap End when the work is done.`,
+          });
         },
         onError: (error) => {
           const title = error instanceof TaskActionError ? error.title : 'Failed to Start Task';
@@ -117,6 +135,10 @@ export default function TasksIndex() {
       try {
         await startInstallation(row.uuid);
         await refresh();
+        setSuccess({
+          title: 'Installation Started',
+          message: `${row.accName || 'The installation'} is now in progress. Tap End Installation when the work is done.`,
+        });
       } catch (e) {
         Alert.alert('Failed to Start Installation', getErrorMessage(e, 'Unknown error'));
       } finally {
@@ -243,6 +265,7 @@ export default function TasksIndex() {
               <Text style={styles.title}>My Tasks</Text>
               <Text style={styles.subtitle}>Services, tickets and installations assigned to you</Text>
             </View>
+
             {error ? <ErrorBanner error={error} onRetry={onRefresh} /> : null}
             <Segmented
               value={tab}
@@ -273,7 +296,20 @@ export default function TasksIndex() {
                   </Pressable>
                 );
               })}
+              <Pressable onPress={onRefresh} style={styles.refreshButton}>
+  <View style={{flexDirection: 'row', alignItems: 'center', gap: 4}}>
+    {refreshing ? (
+      <ActivityIndicator size="small" color={colors.primary} />
+    ) : (
+      <Feather name="rotate-cw" size={20} color={colors.primary} />
+    )}
+    <Text style={{color: colors.primary, fontSize: fontSize.sm, fontFamily: fonts.medium}}>
+      Refresh
+    </Text>
+  </View>
+</Pressable>
             </View>
+            
             <Text style={styles.count}>
               Showing {visible.length} of {source.length}
             </Text>
@@ -311,6 +347,16 @@ export default function TasksIndex() {
         loading={startMutation.isPending}
         onCancel={() => setStartTarget(null)}
         onConfirm={confirmStart}
+      />
+
+      {/* Success sheet → auto-dismisses back to My Tasks (Alert does nothing on web). */}
+      <SuccessModal
+        visible={!!success}
+        title={success?.title ?? ''}
+        message={success?.message ?? ''}
+        actionLabel="Done"
+        autoCloseMs={SUCCESS_AUTO_CLOSE_MS}
+        onAction={() => setSuccess(null)}
       />
     </View>
   );
@@ -368,5 +414,8 @@ const styles = StyleSheet.create({
     fontFamily: fonts.medium,
     fontSize: fontSize.xs,
     color: colors.muted,
+  },
+refreshButton: {
+    padding: 8,
   },
 });
